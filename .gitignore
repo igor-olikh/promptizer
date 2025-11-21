@@ -29,6 +29,12 @@ ENV/
 # Environment variables
 .env
 
+# Generated output files
+prompt/* output.txt
+prompt/*.md
+**/* output.txt
+**/*_output.txt
+
 # IDE
 .vscode/
 .idea/
