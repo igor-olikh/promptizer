@@ -5,7 +5,7 @@ from .hub import RefinementHub
 from .openai_client import OpenAIClient
 from .gemini_client import GeminiClient
 from .models import ModelType, RefinementResponse
-from .exceptions import APIError, ModelNotFoundError
+from .exceptions import APIError, ModelNotFoundError, TimeoutError
 
 
 class PromptRefinementOrchestrator:
@@ -48,31 +48,29 @@ class PromptRefinementOrchestrator:
             openai_request = hub.create_refinement_request(ModelType.OPENAI)
             gemini_request = hub.create_refinement_request(ModelType.GEMINI)
 
-            # Run both refinements concurrently
+            # Run refinements sequentially to avoid timeout issues
             if verbose:
-                print("Running OpenAI and Gemini refinements in parallel...")
+                print("Running OpenAI and Gemini refinements sequentially...")
 
-            openai_task = self.openai_client.refine_prompt(openai_request)
-            gemini_task = self.gemini_client.refine_prompt(gemini_request)
-
+            # Run OpenAI first
+            if verbose:
+                print("  → Calling OpenAI...")
             try:
-                openai_response, gemini_response = await asyncio.gather(
-                    openai_task, gemini_task, return_exceptions=True
-                )
+                openai_response = await self.openai_client.refine_prompt(openai_request)
+            except (APIError, ModelNotFoundError, TimeoutError) as e:
+                raise e
             except Exception as e:
-                # This shouldn't happen with return_exceptions=True, but just in case
-                raise APIError("System", f"Unexpected error during API calls: {str(e)}", e)
+                raise APIError("OpenAI", f"Unexpected error: {str(e)}", e)
             
-            # Check for exceptions in responses
-            if isinstance(openai_response, Exception):
-                if isinstance(openai_response, (APIError, ModelNotFoundError)):
-                    raise openai_response
-                raise APIError("OpenAI", f"Unexpected error: {str(openai_response)}", openai_response)
-            
-            if isinstance(gemini_response, Exception):
-                if isinstance(gemini_response, (APIError, ModelNotFoundError)):
-                    raise gemini_response
-                raise APIError("Gemini", f"Unexpected error: {str(gemini_response)}", gemini_response)
+            # Then run Gemini
+            if verbose:
+                print("  → Calling Gemini...")
+            try:
+                gemini_response = await self.gemini_client.refine_prompt(gemini_request)
+            except (APIError, ModelNotFoundError, TimeoutError) as e:
+                raise e
+            except Exception as e:
+                raise APIError("Gemini", f"Unexpected error: {str(e)}", e)
 
             # Process responses
             hub.process_response(openai_response)
