@@ -1,0 +1,1 @@
+Create a project in Python that uses the API of Google and OpenAI, that they get a prompt from the user and then each one improves the prompt until they decide together that the prompt is the best one it could be.
