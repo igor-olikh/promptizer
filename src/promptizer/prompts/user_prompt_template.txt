@@ -1,0 +1,7 @@
+Current prompt (Iteration {iteration}):
+{prompt}
+
+{previous_refinements_section}
+
+Please refine this prompt and evaluate whether it's good enough. Respond with a JSON object containing 'refined_prompt', 'evaluation_status', and 'reasoning'.
+

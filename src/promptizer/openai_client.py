@@ -1,6 +1,7 @@
 """OpenAI API client for prompt refinement."""
 
 import json
+from pathlib import Path
 from openai import AsyncOpenAI
 from openai import APIError as OpenAIAPIError
 from .config import Config
@@ -17,48 +18,34 @@ class OpenAIClient:
         self.client = AsyncOpenAI(api_key=Config.OPENAI_API_KEY)
         self.model = Config.OPENAI_MODEL
 
+    def _load_prompt_template(self, filename: str) -> str:
+        """Load a prompt template from file."""
+        prompt_dir = Path(__file__).parent / "prompts"
+        prompt_file = prompt_dir / filename
+        if prompt_file.exists():
+            return prompt_file.read_text(encoding="utf-8").strip()
+        raise FileNotFoundError(f"Prompt template not found: {prompt_file}")
+
     def _build_system_prompt(self) -> str:
         """Build the system prompt for OpenAI."""
-        return """You are an expert at refining prompts to make them clearer, more specific, and more effective.
-
-Your task is to:
-1. Analyze the given prompt
-2. Improve it by enhancing clarity, specificity, removing ambiguity, and ensuring completeness
-3. Evaluate whether the prompt is "good enough" based on:
-   - Clarity: Is the prompt clear and easy to understand?
-   - Specificity: Does it provide enough detail?
-   - Lack of ambiguity: Are there multiple interpretations possible?
-   - Completeness: Does it cover all necessary aspects?
-   - Alignment with user intent: Does it capture what the user likely wants?
-
-After refining, you must respond in the following JSON format:
-{
-    "refined_prompt": "your improved prompt here",
-    "evaluation_status": "ACCEPTED" or "NEEDS_IMPROVEMENT",
-    "reasoning": "explanation of your changes and evaluation"
-}
-
-Respond with "ACCEPTED" only if the prompt is truly excellent and needs no further improvement.
-Respond with "NEEDS_IMPROVEMENT" if there are still areas that could be enhanced."""
+        return self._load_prompt_template("system_prompt.txt")
 
     def _build_user_prompt(self, request: RefinementRequest) -> str:
         """Build the user prompt for OpenAI."""
-        prompt_parts = [
-            f"Current prompt (Iteration {request.iteration}):",
-            f"{request.prompt}",
-        ]
-
+        # Build previous refinements section
+        previous_refinements_section = ""
         if request.previous_refinements:
-            prompt_parts.append("\nPrevious refinement history:")
+            previous_refinements_section = "\nPrevious refinement history:"
             for i, prev in enumerate(request.previous_refinements[-3:], 1):
-                prompt_parts.append(f"{i}. {prev}")
-
-        prompt_parts.append(
-            "\nPlease refine this prompt and evaluate whether it's good enough. "
-            "Respond with a JSON object containing 'refined_prompt', 'evaluation_status', and 'reasoning'."
+                previous_refinements_section += f"\n{i}. {prev}"
+        
+        # Load template and format it
+        template = self._load_prompt_template("user_prompt_template.txt")
+        return template.format(
+            iteration=request.iteration,
+            prompt=request.prompt,
+            previous_refinements_section=previous_refinements_section
         )
-
-        return "\n".join(prompt_parts)
 
     async def refine_prompt(
         self, request: RefinementRequest

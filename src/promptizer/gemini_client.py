@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from pathlib import Path
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
 from .config import Config
@@ -18,42 +19,17 @@ class GeminiClient:
         genai.configure(api_key=Config.GOOGLE_API_KEY)
         self.model = genai.GenerativeModel(Config.GEMINI_MODEL)
 
+    def _load_prompt_template(self, filename: str) -> str:
+        """Load a prompt template from file."""
+        prompt_dir = Path(__file__).parent / "prompts"
+        prompt_file = prompt_dir / filename
+        if prompt_file.exists():
+            return prompt_file.read_text(encoding="utf-8").strip()
+        raise FileNotFoundError(f"Prompt template not found: {prompt_file}")
+
     def _build_system_prompt(self) -> str:
         """Build the system prompt for Gemini."""
-        return """You are an expert at refining prompts to make them clearer, more specific, and more effective.
-
-Your task is to:
-1. Analyze the given prompt
-2. Improve it by enhancing clarity, specificity, removing ambiguity, and ensuring completeness
-3. Evaluate whether the prompt is "good enough" based on:
-   - Clarity: Is the prompt clear and easy to understand?
-   - Specificity: Does it provide enough detail?
-   - Lack of ambiguity: Are there multiple interpretations possible?
-   - Completeness: Does it cover all necessary aspects?
-   - Alignment with user intent: Does it capture what the user likely wants?
-
-CRITICAL: You MUST respond with ONLY valid JSON. No text before or after the JSON object.
-
-Required JSON format (you MUST use this exact structure):
-{
-    "refined_prompt": "your improved prompt here - escape all quotes and newlines properly",
-    "evaluation_status": "ACCEPTED",
-    "reasoning": "brief explanation of your changes and evaluation"
-}
-
-JSON RULES:
-- Use double quotes for all strings
-- Escape all double quotes inside strings with \\"
-- Escape all newlines with \\n
-- Escape all backslashes with \\\\
-- Keep "reasoning" brief (under 200 words) to avoid truncation
-- Keep "refined_prompt" concise but complete
-- "evaluation_status" must be exactly "ACCEPTED" or "NEEDS_IMPROVEMENT" (no quotes in the value)
-
-Respond with "ACCEPTED" only if the prompt is truly excellent and needs no further improvement.
-Respond with "NEEDS_IMPROVEMENT" if there are still areas that could be enhanced.
-
-IMPORTANT: Your response must be valid JSON that can be parsed by json.loads(). Test your JSON before responding."""
+        return self._load_prompt_template("gemini_system_prompt.txt")
 
     def _try_fix_json(self, content: str) -> str:
         """Try to fix common JSON issues in the response."""
@@ -90,24 +66,25 @@ IMPORTANT: Your response must be valid JSON that can be parsed by json.loads(). 
 
     def _build_user_prompt(self, request: RefinementRequest) -> str:
         """Build the user prompt for Gemini."""
-        prompt_parts = [
-            f"Current prompt (Iteration {request.iteration}):",
-            f"{request.prompt}",
-        ]
-
+        # Build previous refinements section
+        previous_refinements_section = ""
         if request.previous_refinements:
-            prompt_parts.append("\nPrevious refinement history:")
+            previous_refinements_section = "\nPrevious refinement history:"
             for i, prev in enumerate(request.previous_refinements[-3:], 1):
-                prompt_parts.append(f"{i}. {prev}")
-
-        prompt_parts.append(
-            "\nPlease refine this prompt and evaluate whether it's good enough. "
-            "Respond with ONLY a valid JSON object (no other text). "
-            "The JSON must contain exactly these three fields: 'refined_prompt', 'evaluation_status', and 'reasoning'. "
-            "Remember to escape all quotes, newlines, and special characters in the JSON strings."
+                previous_refinements_section += f"\n{i}. {prev}"
+        
+        # Load template and format it
+        template = self._load_prompt_template("user_prompt_template.txt")
+        user_prompt = template.format(
+            iteration=request.iteration,
+            prompt=request.prompt,
+            previous_refinements_section=previous_refinements_section
         )
-
-        return "\n".join(prompt_parts)
+        
+        # Add Gemini-specific JSON reminder
+        user_prompt += "\n\nRemember: Respond with ONLY a valid JSON object (no other text). Escape all quotes, newlines, and special characters in the JSON strings."
+        
+        return user_prompt
 
     async def refine_prompt(
         self, request: RefinementRequest
