@@ -32,69 +32,126 @@ class GeminiClient:
         return self._load_prompt_template("gemini_system_prompt.txt")
 
     def _try_fix_json(self, content: str) -> str:
-        """Try to fix common JSON issues in the response."""
+        """Try to fix common JSON issues in the response with comprehensive handling."""
         import re
         
         # Remove any leading/trailing whitespace
+        original_content = content
         content = content.strip()
         
-        # Try to find and extract JSON object
+        # Step 1: Extract JSON object if it's embedded in other text
         if "{" in content:
             start_idx = content.find("{")
             # Find matching closing brace
             brace_count = 0
             end_idx = start_idx
-            for i in range(start_idx, len(content)):
-                if content[i] == "{":
-                    brace_count += 1
-                elif content[i] == "}":
-                    brace_count -= 1
-                    if brace_count == 0:
-                        end_idx = i + 1
-                        break
+            in_string = False
+            escape_next = False
             
-            if brace_count == 0:
+            for i in range(start_idx, len(content)):
+                char = content[i]
+                
+                if escape_next:
+                    escape_next = False
+                    continue
+                
+                if char == '\\':
+                    escape_next = True
+                    continue
+                
+                if char == '"' and not escape_next:
+                    in_string = not in_string
+                    continue
+                
+                if not in_string:
+                    if char == "{":
+                        brace_count += 1
+                    elif char == "}":
+                        brace_count -= 1
+                        if brace_count == 0:
+                            end_idx = i + 1
+                            break
+            
+            if brace_count == 0 and end_idx > start_idx:
                 content = content[start_idx:end_idx]
-            else:
+            elif brace_count > 0:
                 # Unmatched braces - try to close them
                 content = content[start_idx:] + "}" * brace_count
         
-        # Fix double-escaped quotes: \\\" should be \"
-        # But we need to be careful - only fix inside string values
-        # First, fix the most common case: double-escaped quotes
-        content = re.sub(r'\\\\"', r'\\"', content)
+        # Step 2: Fix escaping issues - normalize all escape sequences
+        # Fix multiple levels of escaping systematically
+        # We need to be careful to only fix actual escape sequences, not literal backslashes
         
-        # Fix triple-escaped quotes: \\\\\" should be \"
-        content = re.sub(r'\\\\\\"', r'\\"', content)
+        # Pattern: Fix double-escaped quotes (\\\" -> \")
+        # But we need to be smart about this - only fix if it's inside a string value
+        # For now, do a simple replacement but be more careful
         
-        # Fix double-escaped newlines: \\\\n should be \\n (which becomes \n when parsed)
-        content = re.sub(r'\\\\n', r'\\n', content)
+        # Fix: \\\" -> \" (double-escaped quote)
+        content = re.sub(r'\\\\+"', lambda m: '\\"' * (len(m.group(0)) // 3), content)
         
-        # Fix double-escaped backslashes: \\\\ should be \\
-        content = re.sub(r'\\\\\\\\', r'\\\\', content)
+        # More targeted: Fix \\\" specifically (most common case)
+        # Replace any sequence of backslashes followed by quote with proper escaping
+        # This regex finds \\\" and converts to \"
+        def fix_escaped_quotes(match):
+            backslashes = match.group(1)
+            # If we have 2+ backslashes before quote, reduce to 1
+            if len(backslashes) >= 2:
+                return '\\"'
+            return match.group(0)
         
+        content = re.sub(r'(\\+)"', fix_escaped_quotes, content)
+        
+        # Fix escaped newlines: \\\\n -> \\n -> \n (when parsed)
+        # Normalize to single escape: \\n
+        content = re.sub(r'\\{2,}n', r'\\n', content)
+        
+        # Fix escaped backslashes: normalize multiple backslashes
+        # But be careful - we want \\ to stay as \\ (for escaped chars)
+        # Only fix if there are 4+ backslashes in a row
+        content = re.sub(r'\\{4,}', r'\\\\', content)
+        
+        # Step 3: Fix structural issues
         # Remove trailing commas before closing braces/brackets
         content = re.sub(r',(\s*[}\]])', r'\1', content)
         
-        # Try to fix unclosed strings by finding the end of the JSON object
-        # This is a last resort - try to close any unclosed strings
-        # Count quotes to see if we have an even number (strings should be closed)
-        quote_count = content.count('"') - content.count('\\"')
+        # Step 4: Handle truncated or unclosed strings
+        # Check if we have properly closed strings
+        # Simple heuristic: count unescaped quotes
+        quote_count = 0
+        escape_next = False
+        for char in content:
+            if escape_next:
+                escape_next = False
+                continue
+            if char == '\\':
+                escape_next = True
+                continue
+            if char == '"':
+                quote_count += 1
+        
+        # If odd number of quotes, we might have an unclosed string
         if quote_count % 2 != 0:
-            # Odd number of quotes - might have unclosed string
-            # Try to find the last opening quote and close it before the closing brace
+            # Try to find where the string should close
+            # Look for the last field and try to close it properly
             last_brace = content.rfind('}')
             if last_brace > 0:
-                # Check if there's an unclosed string before the last brace
-                before_brace = content[:last_brace]
-                if before_brace.count('"') % 2 != 0:
-                    # Try to add a closing quote before the brace
-                    # Find the last quote that's not escaped
-                    for i in range(len(before_brace) - 1, -1, -1):
-                        if before_brace[i] == '"' and (i == 0 or before_brace[i-1] != '\\'):
-                            # Found an opening quote, try to close it
-                            content = before_brace[:last_brace] + '"' + content[last_brace:]
-                            break
+                # Check the structure before the last brace
+                before_brace = content[:last_brace].rstrip()
+                # If it doesn't end with a quote, try to add one
+                if not before_brace.endswith('"') and not before_brace.endswith('\\'):
+                    # Try to find the last unclosed string
+                    # Look for pattern like: "key": "value (missing closing quote)
+                    match = re.search(r':\s*"([^"]*)$', before_brace)
+                    if match:
+                        # Found an unclosed string value, close it
+                        content = before_brace + '"' + content[last_brace:]
+        
+        # Step 5: Try to fix truncated JSON by completing missing fields
+        # If we're missing closing braces, try to add them
+        open_braces = content.count('{')
+        close_braces = content.count('}')
+        if open_braces > close_braces:
+            content += '}' * (open_braces - close_braces)
         
         return content
 
@@ -165,21 +222,58 @@ class GeminiClient:
             original_content = content
             content = self._try_fix_json(content)
 
-            # Try to parse JSON
-            try:
-                result = json.loads(content)
-            except json.JSONDecodeError:
-                # If fixing didn't work, try the original content
-                if content != original_content:
+            # Try to parse JSON with multiple attempts
+            result = None
+            attempts = [
+                content,  # Try fixed content first
+                original_content,  # Try original content
+            ]
+            
+            last_error = None
+            for attempt_content in attempts:
+                try:
+                    result = json.loads(attempt_content)
+                    content = attempt_content  # Use the working version
+                    break
+                except json.JSONDecodeError as e:
+                    last_error = e
+                    # Try one more fix pass on this content
                     try:
-                        result = json.loads(original_content)
-                        content = original_content
-                    except json.JSONDecodeError:
-                        # Re-raise with original content for better error message
-                        content = original_content
-                        raise
+                        fixed_again = self._try_fix_json(attempt_content)
+                        if fixed_again != attempt_content:
+                            result = json.loads(fixed_again)
+                            content = fixed_again
+                            break
+                    except (json.JSONDecodeError, Exception):
+                        continue
+            
+            # If all attempts failed, try to extract partial data as last resort
+            if result is None:
+                # Try to extract at least the refined_prompt field even if JSON is malformed
+                refined_prompt_match = re.search(r'"refined_prompt"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', content)
+                evaluation_match = re.search(r'"evaluation_status"\s*:\s*"([^"]+)"', content)
+                reasoning_match = re.search(r'"reasoning"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', content)
+                
+                if refined_prompt_match:
+                    # We found at least the refined_prompt, create a partial result
+                    refined_prompt = refined_prompt_match.group(1)
+                    # Unescape the string
+                    refined_prompt = refined_prompt.replace('\\"', '"').replace('\\n', '\n')
+                    
+                    evaluation_status = evaluation_match.group(1) if evaluation_match else "NEEDS_IMPROVEMENT"
+                    reasoning = reasoning_match.group(1) if reasoning_match else "Partial extraction due to JSON parsing error"
+                    if reasoning_match:
+                        reasoning = reasoning.replace('\\"', '"').replace('\\n', '\n')
+                    
+                    # Create a valid result from extracted data
+                    result = {
+                        "refined_prompt": refined_prompt,
+                        "evaluation_status": evaluation_status,
+                        "reasoning": reasoning
+                    }
                 else:
-                    raise
+                    # Couldn't extract anything, raise the error
+                    raise last_error
 
             # Convert escaped newlines to actual newlines for readability
             refined_prompt = result.get("refined_prompt", request.prompt)
