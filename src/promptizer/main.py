@@ -116,10 +116,20 @@ def write_markdown_comparison(
     
     md_path = output_dir / md_filename
     
-    # Generate markdown content with better formatting
-    # Escape any triple backticks in the prompts to avoid breaking code blocks
-    original_escaped = original_prompt.replace("```", "\\`\\`\\`")
-    refined_escaped = refined_prompt.replace("```", "\\`\\`\\`")
+    # Generate markdown content with color-coded comparison
+    # Escape HTML special characters
+    original_escaped = (
+        original_prompt.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+    refined_escaped = (
+        refined_prompt.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
     
     md_content = f"""# Prompt Refinement Comparison
 
@@ -136,43 +146,44 @@ def write_markdown_comparison(
 
 ## 📝 Original Prompt
 
-> **Original Prompt (Before Refinement)**
-> 
-> {original_escaped}
+<div style="background-color: #fff3cd; padding: 20px; border-left: 5px solid #ffc107; border-radius: 5px; margin: 15px 0;">
+
+**Original Prompt (Before Refinement)**
+
+<pre style="white-space: pre-wrap; word-wrap: break-word; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6;">{original_escaped}</pre>
+
+</div>
 
 ---
 
 ## ✨ Refined Prompt
 
-> **Refined Prompt (After Refinement)**
-> 
-> {refined_escaped}
+<div style="background-color: #d4edda; padding: 20px; border-left: 5px solid #28a745; border-radius: 5px; margin: 15px 0;">
+
+**Refined Prompt (After Refinement)**
+
+<pre style="white-space: pre-wrap; word-wrap: break-word; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6;">{refined_escaped}</pre>
+
+</div>
 
 ---
 
-## 📊 Detailed Comparison
+## 📊 Side-by-Side Comparison
 
-### Original Prompt
-
-```
-{original_escaped}
-```
-
-### Refined Prompt
-
-```
-{refined_escaped}
-```
-
----
-
-## Side-by-Side View
-
-| Original Prompt | Refined Prompt |
-|----------------|----------------|
-| `{original_escaped[:100]}{'...' if len(original_escaped) > 100 else ''}` | `{refined_escaped[:100]}{'...' if len(refined_escaped) > 100 else ''}` |
-
-> 💡 **Tip**: Use a markdown viewer that supports side-by-side comparison, or scroll down to see the full prompts above.
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+<tr>
+<th style="width: 50%; background-color: #fff3cd; padding: 15px; border: 2px solid #ffc107; text-align: left;">Original Prompt</th>
+<th style="width: 50%; background-color: #d4edda; padding: 15px; border: 2px solid #28a745; text-align: left;">Refined Prompt</th>
+</tr>
+<tr>
+<td style="padding: 15px; vertical-align: top; border: 2px solid #ffc107; background-color: #fffbf0;">
+<pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5;">{original_escaped}</pre>
+</td>
+<td style="padding: 15px; vertical-align: top; border: 2px solid #28a745; background-color: #f0f9f2;">
+<pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5;">{refined_escaped}</pre>
+</td>
+</tr>
+</table>
 
 ---
 
