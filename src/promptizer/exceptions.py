@@ -21,3 +21,9 @@ class ModelNotFoundError(APIError):
 
     pass
 
+
+class TimeoutError(APIError):
+    """Exception raised when an API call times out."""
+
+    pass
+

@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from .orchestrator import PromptRefinementOrchestrator
 from .config import Config
-from .exceptions import APIError, ModelNotFoundError
+from .exceptions import APIError, ModelNotFoundError, TimeoutError
 
 
 def read_prompt_from_file(file_path: str) -> str:
@@ -317,6 +317,15 @@ async def main():
         print("  1. Check your .env file and verify the model name")
         print("  2. For Gemini, try: gemini-1.5-flash or gemini-1.5-pro")
         print("  3. For OpenAI, verify the model name is correct")
+        sys.exit(1)
+    except TimeoutError as e:
+        print(f"\n⏱️  Timeout Error: {e}")
+        print("\n💡 The process has been stopped to avoid wasting tokens.")
+        print("\n💡 This is often a temporary issue. You can:")
+        print("  1. Wait a few moments and try again")
+        print("  2. Check your network connection")
+        print("  3. Try with a shorter prompt")
+        print("  4. Verify your API quota/rate limits")
         sys.exit(1)
     except APIError as e:
         print(f"\n❌ API Error: {e}")

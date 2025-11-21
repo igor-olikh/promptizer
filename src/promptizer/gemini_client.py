@@ -6,7 +6,7 @@ import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
 from .config import Config
 from .models import ModelType, RefinementRequest, RefinementResponse, EvaluationStatus
-from .exceptions import APIError, ModelNotFoundError
+from .exceptions import APIError, ModelNotFoundError, TimeoutError
 
 
 class GeminiClient:
@@ -115,6 +115,21 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
                     e
                 )
             raise APIError("Gemini", error_msg, e)
+        except google_exceptions.DeadlineExceeded as e:
+            # Timeout error - stop immediately with helpful message
+            raise TimeoutError(
+                "Gemini",
+                f"Request timed out (504 Deadline Exceeded). This may be due to:\n"
+                f"  - Network connectivity issues\n"
+                f"  - Gemini API being temporarily overloaded\n"
+                f"  - The prompt being too long or complex\n"
+                f"  - API rate limiting\n\n"
+                f"Please try again in a few moments. If the issue persists, try:\n"
+                f"  - Using a shorter prompt\n"
+                f"  - Checking your network connection\n"
+                f"  - Verifying your API quota/limits",
+                e
+            )
         except google_exceptions.InvalidArgument as e:
             # Invalid arguments - stop immediately
             raise APIError("Gemini", f"Invalid argument: {str(e)}", e)
@@ -129,6 +144,21 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
         except Exception as e:
             # Any other error - stop immediately
             error_msg = str(e)
+            # Check for timeout/deadline errors in the message
+            if "504" in error_msg or "deadline exceeded" in error_msg.lower() or "timeout" in error_msg.lower():
+                raise TimeoutError(
+                    "Gemini",
+                    f"Request timed out (504 Deadline Exceeded). This may be due to:\n"
+                    f"  - Network connectivity issues\n"
+                    f"  - Gemini API being temporarily overloaded\n"
+                    f"  - The prompt being too long or complex\n"
+                    f"  - API rate limiting\n\n"
+                    f"Please try again in a few moments. If the issue persists, try:\n"
+                    f"  - Using a shorter prompt\n"
+                    f"  - Checking your network connection\n"
+                    f"  - Verifying your API quota/limits",
+                    e
+                )
             if "404" in error_msg or "not found" in error_msg.lower():
                 raise ModelNotFoundError(
                     "Gemini",
