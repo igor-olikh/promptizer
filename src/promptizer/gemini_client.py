@@ -44,6 +44,39 @@ Respond with "NEEDS_IMPROVEMENT" if there are still areas that could be enhanced
 
 IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
 
+    def _try_fix_json(self, content: str) -> str:
+        """Try to fix common JSON issues in the response."""
+        # Remove any leading/trailing whitespace
+        content = content.strip()
+        
+        # Try to find and extract JSON object
+        if "{" in content:
+            start_idx = content.find("{")
+            # Find matching closing brace
+            brace_count = 0
+            end_idx = start_idx
+            for i in range(start_idx, len(content)):
+                if content[i] == "{":
+                    brace_count += 1
+                elif content[i] == "}":
+                    brace_count -= 1
+                    if brace_count == 0:
+                        end_idx = i + 1
+                        break
+            
+            if brace_count == 0:
+                content = content[start_idx:end_idx]
+            else:
+                # Unmatched braces - try to close them
+                content = content[start_idx:] + "}" * brace_count
+        
+        # Try to fix common issues
+        # Remove trailing commas before closing braces/brackets
+        import re
+        content = re.sub(r',(\s*[}\]])', r'\1', content)
+        
+        return content
+
     def _build_user_prompt(self, request: RefinementRequest) -> str:
         """Build the user prompt for Gemini."""
         prompt_parts = [
@@ -95,25 +128,25 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
 
-            # Try to find JSON object in the content
-            # Look for the first { and try to extract complete JSON
-            if "{" in content and "}" in content:
-                start_idx = content.find("{")
-                # Try to find the matching closing brace
-                brace_count = 0
-                end_idx = start_idx
-                for i in range(start_idx, len(content)):
-                    if content[i] == "{":
-                        brace_count += 1
-                    elif content[i] == "}":
-                        brace_count -= 1
-                        if brace_count == 0:
-                            end_idx = i + 1
-                            break
-                if brace_count == 0:
-                    content = content[start_idx:end_idx]
+            # Try to fix common JSON issues
+            original_content = content
+            content = self._try_fix_json(content)
 
-            result = json.loads(content)
+            # Try to parse JSON
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError:
+                # If fixing didn't work, try the original content
+                if content != original_content:
+                    try:
+                        result = json.loads(original_content)
+                        content = original_content
+                    except json.JSONDecodeError:
+                        # Re-raise with original content for better error message
+                        content = original_content
+                        raise
+                else:
+                    raise
 
             return RefinementResponse(
                 refined_prompt=result.get("refined_prompt", request.prompt),
