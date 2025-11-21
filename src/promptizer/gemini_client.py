@@ -32,17 +32,28 @@ Your task is to:
    - Completeness: Does it cover all necessary aspects?
    - Alignment with user intent: Does it capture what the user likely wants?
 
-After refining, you must respond in the following JSON format:
+CRITICAL: You MUST respond with ONLY valid JSON. No text before or after the JSON object.
+
+Required JSON format (you MUST use this exact structure):
 {
-    "refined_prompt": "your improved prompt here",
-    "evaluation_status": "ACCEPTED" or "NEEDS_IMPROVEMENT",
-    "reasoning": "explanation of your changes and evaluation"
+    "refined_prompt": "your improved prompt here - escape all quotes and newlines properly",
+    "evaluation_status": "ACCEPTED",
+    "reasoning": "brief explanation of your changes and evaluation"
 }
+
+JSON RULES:
+- Use double quotes for all strings
+- Escape all double quotes inside strings with \\"
+- Escape all newlines with \\n
+- Escape all backslashes with \\\\
+- Keep "reasoning" brief (under 200 words) to avoid truncation
+- Keep "refined_prompt" concise but complete
+- "evaluation_status" must be exactly "ACCEPTED" or "NEEDS_IMPROVEMENT" (no quotes in the value)
 
 Respond with "ACCEPTED" only if the prompt is truly excellent and needs no further improvement.
 Respond with "NEEDS_IMPROVEMENT" if there are still areas that could be enhanced.
 
-IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
+IMPORTANT: Your response must be valid JSON that can be parsed by json.loads(). Test your JSON before responding."""
 
     def _try_fix_json(self, content: str) -> str:
         """Try to fix common JSON issues in the response."""
@@ -91,7 +102,9 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
 
         prompt_parts.append(
             "\nPlease refine this prompt and evaluate whether it's good enough. "
-            "Respond with a JSON object containing 'refined_prompt', 'evaluation_status', and 'reasoning'."
+            "Respond with ONLY a valid JSON object (no other text). "
+            "The JSON must contain exactly these three fields: 'refined_prompt', 'evaluation_status', and 'reasoning'. "
+            "Remember to escape all quotes, newlines, and special characters in the JSON strings."
         )
 
         return "\n".join(prompt_parts)
@@ -114,9 +127,18 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
         content = ""
         try:
             # Run in executor since Gemini SDK may not be fully async
+            # Configure generation parameters to ensure complete responses
+            generation_config = genai.types.GenerationConfig(
+                temperature=0.7,
+                max_output_tokens=2048,  # Ensure enough tokens for complete JSON
+            )
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
-                None, lambda: self.model.generate_content(full_prompt)
+                None, 
+                lambda: self.model.generate_content(
+                    full_prompt,
+                    generation_config=generation_config
+                )
             )
 
             content = response.text.strip()
