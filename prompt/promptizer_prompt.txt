@@ -10,12 +10,26 @@ Your task is to:
    - Completeness: Does it cover all necessary aspects?
    - Alignment with user intent: Does it capture what the user likely wants?
 
-After refining, you must respond in the following JSON format:
+CRITICAL: You MUST respond with ONLY valid JSON. No text before or after the JSON object.
+
+Required JSON format (you MUST use this exact structure):
 {
-    "refined_prompt": "your improved prompt here",
-    "evaluation_status": "ACCEPTED" or "NEEDS_IMPROVEMENT",
-    "reasoning": "explanation of your changes and evaluation"
+    "refined_prompt": "your improved prompt here - escape all quotes and newlines properly",
+    "evaluation_status": "ACCEPTED",
+    "reasoning": "brief explanation of your changes and evaluation"
 }
+
+JSON RULES:
+- Use double quotes for all strings
+- Escape all double quotes inside strings with \\"
+- Escape all newlines with \\n
+- Escape all backslashes with \\\\
+- Keep "reasoning" brief (under 200 words) to avoid truncation
+- Keep "refined_prompt" concise but complete
+- "evaluation_status" must be exactly "ACCEPTED" or "NEEDS_IMPROVEMENT" (no quotes in the value)
 
 Respond with "ACCEPTED" only if the prompt is truly excellent and needs no further improvement.
 Respond with "NEEDS_IMPROVEMENT" if there are still areas that could be enhanced.
+
+IMPORTANT: Your response must be valid JSON that can be parsed by json.loads(). Test your JSON before responding.
+

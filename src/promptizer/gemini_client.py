@@ -147,8 +147,12 @@ class GeminiClient:
                 else:
                     raise
 
+            # Convert escaped newlines to actual newlines for readability
+            refined_prompt = result.get("refined_prompt", request.prompt)
+            refined_prompt = refined_prompt.replace("\\n", "\n")
+
             return RefinementResponse(
-                refined_prompt=result.get("refined_prompt", request.prompt),
+                refined_prompt=refined_prompt,
                 evaluation_status=EvaluationStatus(
                     result.get("evaluation_status", "NEEDS_IMPROVEMENT")
                 ),
