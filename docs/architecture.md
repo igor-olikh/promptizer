@@ -91,6 +91,7 @@ Handles all interactions with the OpenAI API:
 - Model: Configurable (default: `gpt-4`)
 - Response Format: JSON object
 - Temperature: 0.7 (for creative but consistent refinements)
+- Error Handling: Raises exceptions immediately on errors
 
 ### 3. Gemini Client
 
@@ -101,8 +102,9 @@ Handles all interactions with the Google Gemini API:
 - Returns structured `RefinementResponse` objects
 
 **API Details:**
-- Model: Configurable (default: `gemini-pro`)
+- Model: Configurable (default: `gemini-1.5-flash`)
 - Response Format: JSON object (extracted from text)
+- Error Handling: Raises exceptions immediately on errors
 
 ### 4. PromptRefinementOrchestrator
 
@@ -161,16 +163,49 @@ The convergence logic ensures:
 
 ## Error Handling
 
-- **API Errors**: Both clients handle API errors gracefully, returning the current prompt with `NEEDS_IMPROVEMENT` status
-- **JSON Parsing Errors**: Clients attempt to extract valid JSON from responses, with fallback handling
-- **Network Errors**: Async operations handle timeouts and network issues
+The system implements immediate error stopping to prevent wasting tokens:
+
+- **API Errors**: Both clients raise exceptions immediately on API errors (no fallback responses)
+- **Model Not Found**: Raises `ModelNotFoundError` with helpful suggestions
+- **JSON Parsing Errors**: Raises `APIError` to stop the process
+- **Network Errors**: Raises `APIError` to stop the process
 - **Configuration Errors**: System validates API keys before starting
+- **Exception Propagation**: Errors are caught in the orchestrator and re-raised to stop immediately
+
+**Error Types:**
+- `APIError`: General API errors
+- `ModelNotFoundError`: Specific error for 404/model not found errors
+
+The main entry point provides user-friendly error messages with suggestions for fixing issues.
 
 ## Performance Considerations
 
 - **Asynchronous Processing**: Both model API calls run in parallel using `asyncio.gather()`
 - **Concurrent Refinement**: Each iteration processes both models simultaneously
 - **Efficient State Management**: Only stores last 3 refinements in request history
+
+## Output Generation
+
+The system generates multiple output formats:
+
+1. **Text Output**: Refined prompt saved to `[filename] output.txt`
+2. **Markdown Comparison**: Color-coded markdown file `[filename].md` containing:
+   - Summary statistics
+   - Original prompt (yellow/amber background)
+   - Refined prompt (green background)
+   - Side-by-side comparison table
+   - Refinement details
+
+The markdown files use HTML styling for visual distinction and work in most markdown viewers (GitHub, VS Code, etc.).
+
+## File Input/Output
+
+The system supports:
+- Reading prompts from files (automatic detection)
+- Writing outputs to corresponding files
+- Generating markdown comparison files
+- Working with both relative and absolute paths
+- Default `prompt/` folder for file operations
 
 ## Extensibility
 
@@ -179,4 +214,5 @@ The system is designed to be extensible:
 - Configurable evaluation criteria
 - Pluggable convergence strategies
 - Customizable iteration limits
+- Custom output formatters
 

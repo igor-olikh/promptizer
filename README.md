@@ -14,6 +14,9 @@ Promptizer implements a sophisticated prompt refinement system where two indepen
 - **Asynchronous Processing**: Parallel API calls for efficiency
 - **Iteration Control**: Prevents infinite loops with configurable max iterations
 - **State Tracking**: Maintains history of all refinements
+- **File Input/Output**: Read prompts from files and automatically save outputs
+- **Markdown Comparison**: Generates color-coded markdown files comparing original vs refined prompts
+- **Error Handling**: Stops immediately on API errors to prevent wasting tokens
 
 ## Installation
 
@@ -75,6 +78,21 @@ Example:
 
 The system automatically detects if the input is a file path (by checking for file extensions like `.txt`, `.md`, or if the file exists).
 
+### Markdown Comparison Output
+
+When refinement completes successfully, the system automatically generates a markdown comparison file:
+
+- **Input file**: `prompt/my-prompt.txt`
+- **Output file**: `prompt/my-prompt output.txt` (refined prompt)
+- **Markdown file**: `prompt/my-prompt.md` (color-coded comparison)
+
+The markdown file includes:
+- Summary of the refinement process
+- Original prompt (yellow/amber background)
+- Refined prompt (green background)
+- Side-by-side comparison table
+- Refinement statistics
+
 ### Python API
 
 ```python
@@ -101,7 +119,7 @@ You can configure the system via environment variables in your `.env` file:
 - `OPENAI_API_KEY`: Your OpenAI API key (required)
 - `GOOGLE_API_KEY`: Your Google Gemini API key (required)
 - `OPENAI_MODEL`: OpenAI model to use (default: `gpt-4`)
-- `GEMINI_MODEL`: Gemini model to use (default: `gemini-pro`)
+- `GEMINI_MODEL`: Gemini model to use (default: `gemini-1.5-flash`)
 - `MAX_ITERATIONS`: Maximum number of iterations (default: `10`)
 
 ## How It Works

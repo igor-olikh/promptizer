@@ -145,6 +145,24 @@ Specify the exact problem you need solved, or describe the domain (e.g., data st
 3. **Convergence:** Both models independently reached the conclusion that the prompt was sufficient
 4. **Quality Improvement:** The final prompt is significantly more actionable and comprehensive than the original
 
+## Output Files Generated
+
+When using file-based input, the system automatically generates:
+
+1. **Text Output File**: `example output.txt`
+   - Contains the final refined prompt
+   - Plain text format for easy use
+
+2. **Markdown Comparison File**: `example.md`
+   - Color-coded comparison of original vs refined prompt
+   - Original prompt displayed with yellow/amber background
+   - Refined prompt displayed with green background
+   - Side-by-side comparison table
+   - Summary statistics and refinement details
+   - Works in most markdown viewers (GitHub, VS Code, etc.)
+
+The markdown file makes it easy to visually compare the original and refined prompts side by side.
+
 ## Another Example: Marketing Campaign
 
 ### Input

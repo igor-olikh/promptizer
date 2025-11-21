@@ -65,7 +65,12 @@ The system automatically:
 - Detects if input is a file path (checks for extensions like `.txt`, `.md`, or file existence)
 - Reads the prompt from the file
 - Writes the refined prompt to a corresponding output file
-- Places output in the same directory as the input file
+- Generates a markdown comparison file with color-coded original vs refined prompts
+- Places all outputs in the same directory as the input file
+
+**Output Files:**
+- `my-prompt output.txt` - The refined prompt text
+- `my-prompt.md` - Markdown comparison file with color-coded sections
 
 #### Python Script
 
@@ -93,7 +98,7 @@ You can customize the system behavior via environment variables:
 ```bash
 # Use different models
 OPENAI_MODEL=gpt-3.5-turbo
-GEMINI_MODEL=gemini-pro-vision
+GEMINI_MODEL=gemini-1.5-pro
 
 # Set maximum iterations
 MAX_ITERATIONS=15
@@ -202,14 +207,24 @@ The `state_summary` dictionary contains:
 
 **Solution**: Make sure your `.env` file exists and contains valid API keys.
 
-### JSON Parsing Errors
+### API Errors and Model Not Found
 
-**Error**: `Failed to parse JSON response`
+**Error**: `Model Not Found Error: Gemini API Error: Model 'gemini-1.5-pro-latest' not found`
 
-**Solution**: This is handled automatically - the system will use the previous prompt and continue. If it persists, try:
-- Using a different model
-- Checking your API quota/limits
-- Verifying your API keys are valid
+**Solution**: 
+- The system stops immediately to prevent wasting tokens
+- Check your `.env` file and verify the model name
+- For Gemini, use: `gemini-1.5-flash` or `gemini-1.5-pro` (without `-latest` suffix)
+- For OpenAI, verify the model name is correct (e.g., `gpt-4`, `gpt-3.5-turbo`)
+
+**Error**: `API Error: [error message]`
+
+**Solution**: 
+- The process stops immediately to avoid wasting tokens
+- Check your API keys are valid
+- Verify your API quota/rate limits
+- Check network connectivity
+- Review the error message for specific details
 
 ### Infinite Loop Prevention
 
@@ -220,13 +235,16 @@ The system automatically stops after `MAX_ITERATIONS` (default: 10). If you need
 MAX_ITERATIONS=20
 ```
 
-### Model Not Responding
+### Error Handling
 
-If one model fails, the system continues with the other model's response. Check:
-- API key validity
-- API quota/rate limits
-- Network connectivity
-- Model availability
+The system now stops immediately on any API error to prevent wasting tokens. If you encounter errors:
+
+1. **Model Not Found**: Check your `.env` file model names
+2. **API Errors**: Verify API keys and quotas
+3. **Network Issues**: Check connectivity
+4. **Invalid Responses**: The system will stop and report the error
+
+The system will provide helpful error messages and suggestions for fixing issues.
 
 ## Best Practices
 

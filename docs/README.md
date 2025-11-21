@@ -46,6 +46,9 @@ Promptizer is a collaborative prompt refinement system that uses two independent
 - **Asynchronous Processing**: Parallel API calls for efficiency
 - **Iteration Control**: Prevents infinite loops with configurable max iterations
 - **State Tracking**: Maintains history of all refinements
+- **File Input/Output**: Read prompts from files and automatically save outputs
+- **Markdown Comparison**: Generates color-coded markdown files comparing original vs refined prompts
+- **Error Handling**: Stops immediately on API errors to prevent wasting tokens
 
 ### How It Works
 
@@ -106,7 +109,7 @@ Environment variables in `.env`:
 - `OPENAI_API_KEY`: Required
 - `GOOGLE_API_KEY`: Required
 - `OPENAI_MODEL`: Optional (default: `gpt-4`)
-- `GEMINI_MODEL`: Optional (default: `gemini-pro`)
+- `GEMINI_MODEL`: Optional (default: `gemini-1.5-flash`)
 - `MAX_ITERATIONS`: Optional (default: `10`)
 
 ## Contributing
