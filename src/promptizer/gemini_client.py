@@ -33,6 +33,8 @@ class GeminiClient:
 
     def _try_fix_json(self, content: str) -> str:
         """Try to fix common JSON issues in the response."""
+        import re
+        
         # Remove any leading/trailing whitespace
         content = content.strip()
         
@@ -57,10 +59,42 @@ class GeminiClient:
                 # Unmatched braces - try to close them
                 content = content[start_idx:] + "}" * brace_count
         
-        # Try to fix common issues
+        # Fix double-escaped quotes: \\\" should be \"
+        # But we need to be careful - only fix inside string values
+        # First, fix the most common case: double-escaped quotes
+        content = re.sub(r'\\\\"', r'\\"', content)
+        
+        # Fix triple-escaped quotes: \\\\\" should be \"
+        content = re.sub(r'\\\\\\"', r'\\"', content)
+        
+        # Fix double-escaped newlines: \\\\n should be \\n (which becomes \n when parsed)
+        content = re.sub(r'\\\\n', r'\\n', content)
+        
+        # Fix double-escaped backslashes: \\\\ should be \\
+        content = re.sub(r'\\\\\\\\', r'\\\\', content)
+        
         # Remove trailing commas before closing braces/brackets
-        import re
         content = re.sub(r',(\s*[}\]])', r'\1', content)
+        
+        # Try to fix unclosed strings by finding the end of the JSON object
+        # This is a last resort - try to close any unclosed strings
+        # Count quotes to see if we have an even number (strings should be closed)
+        quote_count = content.count('"') - content.count('\\"')
+        if quote_count % 2 != 0:
+            # Odd number of quotes - might have unclosed string
+            # Try to find the last opening quote and close it before the closing brace
+            last_brace = content.rfind('}')
+            if last_brace > 0:
+                # Check if there's an unclosed string before the last brace
+                before_brace = content[:last_brace]
+                if before_brace.count('"') % 2 != 0:
+                    # Try to add a closing quote before the brace
+                    # Find the last quote that's not escaped
+                    for i in range(len(before_brace) - 1, -1, -1):
+                        if before_brace[i] == '"' and (i == 0 or before_brace[i-1] != '\\'):
+                            # Found an opening quote, try to close it
+                            content = before_brace[:last_brace] + '"' + content[last_brace:]
+                            break
         
         return content
 
