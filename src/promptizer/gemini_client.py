@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 from pathlib import Path
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
@@ -33,8 +34,6 @@ class GeminiClient:
 
     def _try_fix_json(self, content: str) -> str:
         """Try to fix common JSON issues in the response with comprehensive handling."""
-        import re
-        
         # Remove any leading/trailing whitespace
         original_content = content
         content = content.strip()
