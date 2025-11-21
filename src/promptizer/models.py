@@ -2,7 +2,7 @@
 
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 from datetime import datetime
 
 
@@ -57,7 +57,13 @@ class HubState(BaseModel):
     gemini_accepted: bool = False
     is_converged: bool = False
     convergence_reason: Optional[str] = None
-    _pending_responses: list[RefinementResponse] = Field(default_factory=list, exclude=True)
+    _pending_responses: PrivateAttr = PrivateAttr(default_factory=list)
+
+    def __init__(self, **data):
+        """Initialize HubState with pending responses."""
+        super().__init__(**data)
+        if not hasattr(self, '_pending_responses'):
+            self._pending_responses = []
 
     def update(self, response: RefinementResponse) -> None:
         """Update hub state with a new refinement response."""
