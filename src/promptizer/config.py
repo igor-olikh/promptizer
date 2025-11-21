@@ -15,7 +15,7 @@ class Config:
 
     # Google Gemini Configuration
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-pro")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
     # System Configuration
     MAX_ITERATIONS: int = int(os.getenv("MAX_ITERATIONS", "10"))

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from .orchestrator import PromptRefinementOrchestrator
 from .config import Config
+from .exceptions import APIError, ModelNotFoundError
 
 
 def read_prompt_from_file(file_path: str) -> str:
@@ -310,13 +311,27 @@ async def main():
             print(f"📝 Markdown comparison written to: {md_file}")
         
         return final_prompt, state_summary
+    except ModelNotFoundError as e:
+        print(f"\n❌ Model Not Found Error: {e}")
+        print("\n💡 Suggestions:")
+        print("  1. Check your .env file and verify the model name")
+        print("  2. For Gemini, try: gemini-1.5-flash or gemini-1.5-pro")
+        print("  3. For OpenAI, verify the model name is correct")
+        sys.exit(1)
+    except APIError as e:
+        print(f"\n❌ API Error: {e}")
+        print("\n💡 The process has been stopped to avoid wasting tokens.")
+        if e.original_error:
+            print(f"   Original error: {e.original_error}")
+        sys.exit(1)
     except KeyboardInterrupt:
-        print("\n\nRefinement interrupted by user")
+        print("\n\n⚠️ Refinement interrupted by user")
+        print("💡 Process stopped to avoid wasting tokens.")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Error during refinement: {e}")
+        print(f"\n❌ Unexpected error during refinement: {e}")
+        print("💡 The process has been stopped to avoid wasting tokens.")
         import traceback
-
         traceback.print_exc()
         sys.exit(1)
 

@@ -3,8 +3,10 @@
 import asyncio
 import json
 import google.generativeai as genai
+from google.api_core import exceptions as google_exceptions
 from .config import Config
 from .models import ModelType, RefinementRequest, RefinementResponse, EvaluationStatus
+from .exceptions import APIError, ModelNotFoundError
 
 
 class GeminiClient:
@@ -64,7 +66,12 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
     async def refine_prompt(
         self, request: RefinementRequest
     ) -> RefinementResponse:
-        """Refine a prompt using Gemini."""
+        """Refine a prompt using Gemini.
+        
+        Raises:
+            ModelNotFoundError: If the model is not found
+            APIError: If there's an API error
+        """
         system_prompt = self._build_system_prompt()
         user_prompt = self._build_user_prompt(request)
 
@@ -98,21 +105,35 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
                 reasoning=result.get("reasoning", "No reasoning provided"),
                 model_type=ModelType.GEMINI,
             )
+        except google_exceptions.NotFound as e:
+            # Model not found - stop immediately
+            error_msg = str(e)
+            if "not found" in error_msg.lower() or "404" in error_msg:
+                raise ModelNotFoundError(
+                    "Gemini",
+                    f"Model '{Config.GEMINI_MODEL}' not found. Please check your model name in .env file. Error: {error_msg}",
+                    e
+                )
+            raise APIError("Gemini", error_msg, e)
+        except google_exceptions.InvalidArgument as e:
+            # Invalid arguments - stop immediately
+            raise APIError("Gemini", f"Invalid argument: {str(e)}", e)
         except json.JSONDecodeError as e:
-            # Try to extract prompt from text if JSON parsing fails
+            # JSON parsing error - still raise to stop process
             content_preview = content[:200] if content else "No content available"
-            return RefinementResponse(
-                refined_prompt=request.prompt,
-                evaluation_status=EvaluationStatus.NEEDS_IMPROVEMENT,
-                reasoning=f"Failed to parse JSON response: {str(e)}. Raw response: {content_preview}",
-                model_type=ModelType.GEMINI,
+            raise APIError(
+                "Gemini",
+                f"Failed to parse JSON response: {str(e)}. Raw response: {content_preview}",
+                e
             )
         except Exception as e:
-            # Fallback: return the original prompt with needs improvement status
-            return RefinementResponse(
-                refined_prompt=request.prompt,
-                evaluation_status=EvaluationStatus.NEEDS_IMPROVEMENT,
-                reasoning=f"Error during refinement: {str(e)}",
-                model_type=ModelType.GEMINI,
-            )
+            # Any other error - stop immediately
+            error_msg = str(e)
+            if "404" in error_msg or "not found" in error_msg.lower():
+                raise ModelNotFoundError(
+                    "Gemini",
+                    f"Model error: {error_msg}. Please check your model name in .env file.",
+                    e
+                )
+            raise APIError("Gemini", f"Unexpected error: {error_msg}", e)
 
