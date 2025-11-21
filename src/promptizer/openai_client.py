@@ -97,6 +97,15 @@ Respond with "NEEDS_IMPROVEMENT" if there are still areas that could be enhanced
         except OpenAIAPIError as e:
             # OpenAI API error - stop immediately
             error_msg = str(e)
+            # Include additional error details if available
+            if hasattr(e, 'status_code'):
+                error_msg += f" (Status Code: {e.status_code})"
+            if hasattr(e, 'code'):
+                error_msg += f" (Code: {e.code})"
+            if hasattr(e, 'type'):
+                error_msg += f" (Type: {e.type})"
+            if hasattr(e, 'param'):
+                error_msg += f" (Param: {e.param})"
             if "model" in error_msg.lower() and ("not found" in error_msg.lower() or "404" in error_msg):
                 raise ModelNotFoundError(
                     "OpenAI",

@@ -313,6 +313,15 @@ async def main():
         return final_prompt, state_summary
     except ModelNotFoundError as e:
         print(f"\n❌ Model Not Found Error: {e}")
+        # Always show original exception details
+        if hasattr(e, 'get_original_error_details'):
+            print(e.get_original_error_details())
+        elif e.original_error:
+            print(f"\n{'='*60}")
+            print(f"Original {e.model_type} Exception:")
+            print(f"{'='*60}")
+            import traceback
+            traceback.print_exception(type(e.original_error), e.original_error, e.original_error.__traceback__)
         print("\n💡 Suggestions:")
         print("  1. Check your .env file and verify the model name")
         print("  2. For Gemini, try: gemini-1.5-flash or gemini-1.5-pro")
@@ -320,6 +329,15 @@ async def main():
         sys.exit(1)
     except TimeoutError as e:
         print(f"\n⏱️  Timeout Error: {e}")
+        # Always show original exception details
+        if hasattr(e, 'get_original_error_details'):
+            print(e.get_original_error_details())
+        elif e.original_error:
+            print(f"\n{'='*60}")
+            print(f"Original {e.model_type} Exception:")
+            print(f"{'='*60}")
+            import traceback
+            traceback.print_exception(type(e.original_error), e.original_error, e.original_error.__traceback__)
         print("\n💡 The process has been stopped to avoid wasting tokens.")
         print("\n💡 This is often a temporary issue. You can:")
         print("  1. Wait a few moments and try again")
@@ -329,9 +347,16 @@ async def main():
         sys.exit(1)
     except APIError as e:
         print(f"\n❌ API Error: {e}")
+        # Always show original exception details
+        if hasattr(e, 'get_original_error_details'):
+            print(e.get_original_error_details())
+        elif e.original_error:
+            print(f"\n{'='*60}")
+            print(f"Original {e.model_type} Exception:")
+            print(f"{'='*60}")
+            import traceback
+            traceback.print_exception(type(e.original_error), e.original_error, e.original_error.__traceback__)
         print("\n💡 The process has been stopped to avoid wasting tokens.")
-        if e.original_error:
-            print(f"   Original error: {e.original_error}")
         sys.exit(1)
     except KeyboardInterrupt:
         print("\n\n⚠️ Refinement interrupted by user")
@@ -341,6 +366,9 @@ async def main():
         print(f"\n❌ Unexpected error during refinement: {e}")
         print("💡 The process has been stopped to avoid wasting tokens.")
         import traceback
+        print(f"\n{'='*60}")
+        print("Full Traceback:")
+        print(f"{'='*60}")
         traceback.print_exc()
         sys.exit(1)
 

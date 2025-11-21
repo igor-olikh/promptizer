@@ -108,6 +108,11 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
         except google_exceptions.NotFound as e:
             # Model not found - stop immediately
             error_msg = str(e)
+            # Include additional error details if available
+            if hasattr(e, 'code'):
+                error_msg += f" (Code: {e.code})"
+            if hasattr(e, 'message'):
+                error_msg += f" (Message: {e.message})"
             if "not found" in error_msg.lower() or "404" in error_msg:
                 raise ModelNotFoundError(
                     "Gemini",
@@ -117,6 +122,11 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
             raise APIError("Gemini", error_msg, e)
         except google_exceptions.DeadlineExceeded as e:
             # Timeout error - stop immediately with helpful message
+            error_msg = str(e)
+            if hasattr(e, 'code'):
+                error_msg += f" (Code: {e.code})"
+            if hasattr(e, 'message'):
+                error_msg += f" (Message: {e.message})"
             raise TimeoutError(
                 "Gemini",
                 f"Request timed out (504 Deadline Exceeded). This may be due to:\n"
@@ -127,12 +137,18 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
                 f"Please try again in a few moments. If the issue persists, try:\n"
                 f"  - Using a shorter prompt\n"
                 f"  - Checking your network connection\n"
-                f"  - Verifying your API quota/limits",
+                f"  - Verifying your API quota/limits\n\n"
+                f"Original error: {error_msg}",
                 e
             )
         except google_exceptions.InvalidArgument as e:
             # Invalid arguments - stop immediately
-            raise APIError("Gemini", f"Invalid argument: {str(e)}", e)
+            error_msg = str(e)
+            if hasattr(e, 'code'):
+                error_msg += f" (Code: {e.code})"
+            if hasattr(e, 'message'):
+                error_msg += f" (Message: {e.message})"
+            raise APIError("Gemini", f"Invalid argument: {error_msg}", e)
         except json.JSONDecodeError as e:
             # JSON parsing error - still raise to stop process
             content_preview = content[:200] if content else "No content available"
