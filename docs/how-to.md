@@ -32,7 +32,7 @@ GOOGLE_API_KEY=your-google-api-key-here
 
 ### 3. Basic Usage
 
-#### Command Line
+#### Command Line - Direct Prompt
 
 ```bash
 # Run with a prompt as argument
@@ -42,6 +42,30 @@ poetry run python -m promptizer.main "Write a blog post about AI"
 poetry run python -m promptizer.main
 # Then enter your prompt when prompted
 ```
+
+#### Command Line - File-Based Input
+
+The system supports reading prompts from files and automatically writing outputs:
+
+```bash
+# 1. Create a prompt file in the prompt/ folder
+echo "Write code" > prompt/my-prompt.txt
+
+# 2. Run with the filename
+poetry run python -m promptizer.main "my-prompt.txt"
+
+# 3. Output is automatically written to "my-prompt output.txt"
+```
+
+**File Naming Convention:**
+- Input file: `code prompt to improve.txt`
+- Output file: `code prompt to improve output.txt`
+
+The system automatically:
+- Detects if input is a file path (checks for extensions like `.txt`, `.md`, or file existence)
+- Reads the prompt from the file
+- Writes the refined prompt to a corresponding output file
+- Places output in the same directory as the input file
 
 #### Python Script
 

@@ -43,16 +43,37 @@ GOOGLE_API_KEY=your_google_api_key_here
 
 ### Command Line
 
-Activate the Poetry environment and run:
+**Direct prompt input:**
 ```bash
 poetry run python -m promptizer.main "Your initial prompt here"
 ```
 
-Or run interactively:
+**File-based input:**
+```bash
+# Place your prompt in the prompt/ folder, then:
+poetry run python -m promptizer.main "example.txt"
+# Output will be written to "example output.txt" in the same folder
+```
+
+**Interactive mode:**
 ```bash
 poetry run python -m promptizer.main
-# Then enter your prompt when prompted
+# Then enter your prompt or file path when prompted
 ```
+
+### File Input/Output
+
+The system supports reading prompts from files and automatically writing outputs:
+
+1. **Place your prompt file** in the `prompt/` folder (or provide a full path)
+2. **Run with the filename**: `poetry run python -m promptizer.main "my-prompt.txt"`
+3. **Output is automatically written** to a corresponding file: `my-prompt output.txt`
+
+Example:
+- Input file: `prompt/code prompt to improve.txt`
+- Output file: `prompt/code prompt to improve output.txt`
+
+The system automatically detects if the input is a file path (by checking for file extensions like `.txt`, `.md`, or if the file exists).
 
 ### Python API
 
