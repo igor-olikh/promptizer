@@ -95,6 +95,24 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
 
+            # Try to find JSON object in the content
+            # Look for the first { and try to extract complete JSON
+            if "{" in content and "}" in content:
+                start_idx = content.find("{")
+                # Try to find the matching closing brace
+                brace_count = 0
+                end_idx = start_idx
+                for i in range(start_idx, len(content)):
+                    if content[i] == "{":
+                        brace_count += 1
+                    elif content[i] == "}":
+                        brace_count -= 1
+                        if brace_count == 0:
+                            end_idx = i + 1
+                            break
+                if brace_count == 0:
+                    content = content[start_idx:end_idx]
+
             result = json.loads(content)
 
             return RefinementResponse(
@@ -150,13 +168,22 @@ IMPORTANT: Respond ONLY with valid JSON, no additional text before or after."""
                 error_msg += f" (Message: {e.message})"
             raise APIError("Gemini", f"Invalid argument: {error_msg}", e)
         except json.JSONDecodeError as e:
-            # JSON parsing error - still raise to stop process
-            content_preview = content[:200] if content else "No content available"
-            raise APIError(
-                "Gemini",
-                f"Failed to parse JSON response: {str(e)}. Raw response: {content_preview}",
-                e
-            )
+            # JSON parsing error - show full response for debugging
+            error_msg = f"Failed to parse JSON response: {str(e)}"
+            if content:
+                error_msg += f"\n\nRaw response (first 1000 chars):\n{content[:1000]}"
+                if len(content) > 1000:
+                    error_msg += f"\n... (truncated, total length: {len(content)} chars)"
+                # Try to show where the error occurred
+                if hasattr(e, 'pos') and e.pos:
+                    error_msg += f"\n\nError position: {e.pos}"
+                    if e.pos < len(content):
+                        start = max(0, e.pos - 50)
+                        end = min(len(content), e.pos + 50)
+                        error_msg += f"\nContext around error:\n{content[start:end]}"
+            else:
+                error_msg += "\nNo content received from API."
+            raise APIError("Gemini", error_msg, e)
         except Exception as e:
             # Any other error - stop immediately
             error_msg = str(e)
