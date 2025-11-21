@@ -46,6 +46,13 @@ GOOGLE_API_KEY=your_google_api_key_here
 
 ### Command Line
 
+**List available models:**
+```bash
+poetry run python -m promptizer.main --list-models
+# Shows all available OpenAI and Gemini models
+# Validates your current configuration
+```
+
 **Direct prompt input:**
 ```bash
 poetry run python -m promptizer.main "Your initial prompt here"
@@ -121,6 +128,21 @@ You can configure the system via environment variables in your `.env` file:
 - `OPENAI_MODEL`: OpenAI model to use (default: `gpt-4`)
 - `GEMINI_MODEL`: Gemini model to use (default: `gemini-1.5-flash`)
 - `MAX_ITERATIONS`: Maximum number of iterations (default: `10`)
+
+### Checking Available Models
+
+If you encounter model not found errors, use the model listing feature:
+
+```bash
+poetry run python -m promptizer.main --list-models
+```
+
+This will:
+- List all available OpenAI models
+- List all available Gemini models (with generateContent support)
+- Show your current configuration
+- Validate if your configured models are available
+- Provide recommendations for fixing configuration issues
 
 ## How It Works
 

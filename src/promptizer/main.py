@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from .orchestrator import PromptRefinementOrchestrator
 from .config import Config
+from .list_models import list_all_models
 from .exceptions import APIError, ModelNotFoundError, TimeoutError
 
 
@@ -223,6 +224,11 @@ def is_file_path(input_str: str) -> bool:
 
 async def main():
     """Main function to run the prompt refinement system."""
+    # Check for --list-models flag
+    if len(sys.argv) > 1 and sys.argv[1] in ["--list-models", "-l", "--models"]:
+        await list_all_models()
+        sys.exit(0)
+    
     # Validate configuration
     try:
         Config.validate()
@@ -232,6 +238,8 @@ async def main():
         print("  - OPENAI_API_KEY")
         print("  - GOOGLE_API_KEY")
         print("\nYou can create a .env file with these values.")
+        print("\n💡 Tip: Run with --list-models to see available models:")
+        print("   poetry run python -m promptizer.main --list-models")
         sys.exit(1)
 
     # Get initial prompt
